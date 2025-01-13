@@ -34,51 +34,47 @@ windows windowSize =
     . map (take windowSize)
     . tails
 
-windowAndSet :: Input -> Int
-windowAndSet inp =
+windowedHOF :: (String -> Bool) -> String -> Int
+windowedHOF isUniqueFn inp =
   maybe (-1) (+ 14)
-    $ findIndex ((== 14) . S.size . S.fromList)
+    $ findIndex isUniqueFn
     $ windows 14 inp
+
+windowAndSet :: Input -> Int
+windowAndSet = windowedHOF ((== 14) . S.size . S.fromList)
 
 windowAndList :: Input -> Int
-windowAndList inp =
-  maybe (-1) (+ 14)
-    $ findIndex ((== 14) . length . nub)
-    $ windows 14 inp
+windowAndList = windowedHOF ((== 14) . length . nub)
 
 windowAndSetInsert :: Input -> Int
-windowAndSetInsert inp =
-  maybe (-1) (+ 14)
-    $ findIndex
-      ( isJust
-          . foldl'
-            ( \mset c ->
-                case mset of
-                  Nothing -> Nothing
-                  Just s
-                    | S.member c s -> Nothing
-                    | otherwise -> Just $ S.insert c s
-            )
-            (Just S.empty)
-      )
-    $ windows 14 inp
+windowAndSetInsert =
+  windowedHOF
+    ( isJust
+        . foldl'
+          ( \mset c ->
+              case mset of
+                Nothing -> Nothing
+                Just s
+                  | S.member c s -> Nothing
+                  | otherwise -> Just $ S.insert c s
+          )
+          (Just S.empty)
+    )
 
 windowAndListCons :: Input -> Int
-windowAndListCons inp =
-  maybe (-1) (+ 14)
-    $ findIndex
-      ( isJust
-          . foldl
-            ( \mlist c ->
-                case mlist of
-                  Nothing -> Nothing
-                  Just l
-                    | c `elem` l -> Nothing
-                    | otherwise -> Just $ c : l
-            )
-            (Just [])
-      )
-    $ windows 14 inp
+windowAndListCons =
+  windowedHOF
+    ( isJust
+        . foldl
+          ( \mlist c ->
+              case mlist of
+                Nothing -> Nothing
+                Just l
+                  | c `elem` l -> Nothing
+                  | otherwise -> Just $ c : l
+          )
+          (Just [])
+    )
 
 windowAndBits :: Input -> Int
 windowAndBits inp =
