@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: "src/AOC2022/p06"
+      component: "AdventOfCode:exe:22d06"
+    - path: "src/AOC2024/p01"
+      component: "AdventOfCode:exe:24d01"
+    - path: "src/AOC2024/p02"
+      component: "AdventOfCode:exe:24d02"
+    - path: "src/AOC2024/p03"
+      component: "AdventOfCode:exe:24d03"

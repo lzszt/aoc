@@ -1,0 +1,54 @@
+cabal-version:   3.0
+name:            AdventOfCode
+version:         0.1.0.0
+
+-- synopsis:
+-- description:
+license:         MIT
+license-file:    LICENSE
+author:          Felix Leitz
+maintainer:      felix.leitz92@gmail.com
+
+-- copyright:
+build-type:      Simple
+extra-doc-files: CHANGELOG.md
+
+-- extra-source-files:
+
+common warnings
+  ghc-options: -Wall
+
+executable 22d06
+  import:           warnings
+  ghc-options:      -O2
+  main-is:          Main.hs
+  default-language: GHC2021
+  hs-source-dirs:   src/AOC2022/p06
+  build-depends:
+    , base
+    , containers
+    , criterion
+    , optparse-applicative
+
+executable 24d01
+  import:           warnings
+  main-is:          Main.hs
+  default-language: GHC2021
+  hs-source-dirs:   src/AOC2024/p01
+  build-depends:
+    , base
+    , containers
+
+executable 24d02
+  import:           warnings
+  main-is:          Main.hs
+  default-language: GHC2021
+  hs-source-dirs:   src/AOC2024/p02
+  build-depends:    base
+
+executable 24d03
+  import:           warnings
+  main-is:          Main.hs
+  default-language: GHC2021
+  hs-source-dirs:   src/AOC2024/p03
+  build-depends:    base
