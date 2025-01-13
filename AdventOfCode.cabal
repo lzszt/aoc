@@ -29,6 +29,7 @@ executable 22d06
     , containers
     , criterion
     , optparse-applicative
+    , vector
 
 executable 24d01
   import:           warnings

@@ -9,6 +9,7 @@ import Data.Char
 import Data.List
 import Data.Maybe
 import Data.Set qualified as S
+import Data.Vector qualified as V
 import Data.Word
 import Options.Applicative
 import System.Environment
@@ -174,8 +175,52 @@ findDuplicateOffset'' = go 0 (const False)
       | seen x = Just offset
       | otherwise = go (offset + 1) (\y -> y == x || seen y) xs
 
+findDuplicateOffset''Vector :: (Eq a) => V.Vector a -> Maybe Int
+findDuplicateOffset''Vector = go 0 (const False)
+  where
+    go offset seen v =
+      case V.uncons v of
+        Nothing -> Nothing
+        Just (x, xs)
+          | seen x -> Just offset
+          | otherwise -> go (offset + 1) (\y -> y == x || seen y) xs
+
 recursionAndIndexFunc :: Input -> Int
 recursionAndIndexFunc = recursionHOF findDuplicateOffset''
+
+vectorsRecursionHOF :: (V.Vector Char -> Maybe Int) -> Input -> Int
+vectorsRecursionHOF findDuplicateOffsetFn = go 0 . V.fromList
+  where
+    go :: Int -> V.Vector Char -> Int
+    go !idx cs =
+      case V.uncons cs of
+        Nothing -> -1
+        Just (_, xs) ->
+          let window = V.take 14 cs
+              dupOffset = findDuplicateOffsetFn $ V.reverse window
+           in case dupOffset of
+                Nothing -> idx + 14
+                Just offsetRev -> go (idx + 14 - offsetRev) (V.drop (13 - offsetRev) xs)
+
+vectorsUnsafeRecursionHOF :: (V.Vector Char -> Maybe Int) -> Input -> Int
+vectorsUnsafeRecursionHOF findDuplicateOffsetFn = go 0 . V.fromList
+  where
+    go :: Int -> V.Vector Char -> Int
+    go !idx cs =
+      case V.uncons cs of
+        Nothing -> -1
+        Just (_, xs) ->
+          let window = V.unsafeTake 14 cs
+              dupOffset = findDuplicateOffsetFn $ V.reverse window
+           in case dupOffset of
+                Nothing -> idx + 14
+                Just offsetRev -> go (idx + 14 - offsetRev) (V.unsafeDrop (13 - offsetRev) xs)
+
+recursionVectorsAndIndexFunc :: Input -> Int
+recursionVectorsAndIndexFunc = vectorsRecursionHOF findDuplicateOffset''Vector
+
+recursionVectorsUnsafeAndIndexFunc :: Input -> Int
+recursionVectorsUnsafeAndIndexFunc = vectorsUnsafeRecursionHOF findDuplicateOffset''Vector
 
 defaultMainWithArgs :: [String] -> [Benchmark] -> IO ()
 defaultMainWithArgs args benchmarks = do
@@ -187,7 +232,7 @@ main = do
   (inputPath : criterionArgs) <- getArgs
   input <- parseInput inputPath
   -- print $ part1 input
-  print $ recursionAndIndexFunc input
+  print $ recursionVectorsUnsafeAndIndexFunc input
 
   defaultMainWithArgs
     criterionArgs
@@ -203,5 +248,7 @@ main = do
           , bench "recursionAndSet" $ nf recursionAndSet input
           , bench "recursionAndList" $ nf recursionAndList input
           , bench "recursionAndIndexFunc" $ nf recursionAndIndexFunc input
+          , bench "recursionVectorsAndIndexFunc" $ nf recursionVectorsAndIndexFunc input
+          , bench "recursionVectorsUnsafeAndIndexFunc" $ nf recursionVectorsUnsafeAndIndexFunc input
           ]
     ]
