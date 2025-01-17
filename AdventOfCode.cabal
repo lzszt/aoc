@@ -28,7 +28,9 @@ executable 22d06
     , base
     , containers
     , criterion
+    , hspec
     , optparse-applicative
+    , QuickCheck
     , vector
 
 executable 24d01

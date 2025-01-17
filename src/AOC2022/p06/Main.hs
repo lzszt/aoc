@@ -2,6 +2,7 @@
 
 module Main where
 
+import Control.Monad (replicateM)
 import Criterion.Main
 import Criterion.Main.Options
 import Data.Bits
@@ -14,6 +15,9 @@ import Data.Word
 import Options.Applicative
 import System.Environment
 import System.IO (readFile')
+import Test.Hspec (Spec, hspec, shouldBe)
+import Test.Hspec.QuickCheck
+import Test.QuickCheck
 
 type Input = String
 
@@ -112,34 +116,43 @@ recursionAndBits input =
       (first13, rest) = splitAt 13 inp
       initialState = foldl' (.^.) (0 :: Word32) first13
       go :: (Word32 -> (Word32, Word32) -> Maybe Word32) -> Word32 -> [(Word32, Word32)] -> Int
-      go f = run 14
+      go f = run 0
         where
-          run !i _ [] = i
+          run !i _ [] = -1
           run !i !s (x : xs) = case f s x of
-            Nothing -> i
+            Nothing -> i + 14
             Just !s' -> run (i + 1) s' xs
-   in go
-        ( \filter (f, l) ->
-            let all14 = filter .^. l
-                new13 = all14 .^. f
-             in if popCount all14 == 14
-                  then Nothing
-                  else Just new13
-        )
-        initialState
-        $ zip inp rest
+   in if length first13 == 13
+        then
+          go
+            ( \filter (f, l) ->
+                let all14 = filter .^. l
+                    new13 = all14 .^. f
+                 in if popCount all14 == 14
+                      then Nothing
+                      else Just new13
+            )
+            initialState
+            $ zip inp rest
+        else -1
+
+takeMaybe :: Int -> [a] -> Maybe [a]
+takeMaybe 0 _ = Just []
+takeMaybe _ [] = Nothing
+takeMaybe n (x : xs) = (x :) <$> takeMaybe (n - 1) xs
 
 recursionHOF :: (String -> Maybe Int) -> Input -> Int
-recursionHOF findDuplicateOffsetFn =
-  go 0
+recursionHOF findDuplicateOffsetFn = go 0
   where
     go _ [] = -1
     go !idx xss@(_ : xs) =
-      let window = take 14 xss
-          dupOffset = findDuplicateOffsetFn $ reverse window
-       in case dupOffset of
-            Nothing -> idx + 14
-            Just offsetRev -> go (idx + 14 - offsetRev) (drop (13 - offsetRev) xs)
+      case takeMaybe 14 xss of
+        Nothing -> -1
+        Just window ->
+          let dupOffset = findDuplicateOffsetFn $ reverse window
+           in case dupOffset of
+                Nothing -> idx + 14
+                Just offsetRev -> go (idx + 14 - offsetRev) (drop (13 - offsetRev) xs)
 
 findDuplicateOffset :: (Ord a) => [a] -> Maybe Int
 findDuplicateOffset = go 0 S.empty
@@ -188,29 +201,33 @@ vectorsRecursionHOF :: (V.Vector Char -> Maybe Int) -> Input -> Int
 vectorsRecursionHOF findDuplicateOffsetFn = go 0 . V.fromList
   where
     go :: Int -> V.Vector Char -> Int
-    go !idx cs =
-      case V.uncons cs of
-        Nothing -> -1
-        Just (_, xs) ->
-          let window = V.take 14 cs
-              dupOffset = findDuplicateOffsetFn $ V.reverse window
-           in case dupOffset of
-                Nothing -> idx + 14
-                Just offsetRev -> go (idx + 14 - offsetRev) (V.drop (13 - offsetRev) xs)
+    go !idx cs
+      | V.length cs < 14 = -1
+      | otherwise =
+          case V.uncons cs of
+            Nothing -> -1
+            Just (_, xs) ->
+              let window = V.take 14 cs
+                  dupOffset = findDuplicateOffsetFn $ V.reverse window
+               in case dupOffset of
+                    Nothing -> idx + 14
+                    Just offsetRev -> go (idx + 14 - offsetRev) (V.drop (13 - offsetRev) xs)
 
 vectorsUnsafeRecursionHOF :: (V.Vector Char -> Maybe Int) -> Input -> Int
 vectorsUnsafeRecursionHOF findDuplicateOffsetFn = go 0 . V.fromList
   where
     go :: Int -> V.Vector Char -> Int
-    go !idx cs =
-      case V.uncons cs of
-        Nothing -> -1
-        Just (_, xs) ->
-          let window = V.unsafeTake 14 cs
-              dupOffset = findDuplicateOffsetFn $ V.reverse window
-           in case dupOffset of
-                Nothing -> idx + 14
-                Just offsetRev -> go (idx + 14 - offsetRev) (V.unsafeDrop (13 - offsetRev) xs)
+    go !idx cs
+      | V.length cs < 14 = -1
+      | otherwise =
+          case V.uncons cs of
+            Nothing -> -1
+            Just (_, xs) ->
+              let window = V.unsafeTake 14 cs
+                  dupOffset = findDuplicateOffsetFn $ V.reverse window
+               in case dupOffset of
+                    Nothing -> idx + 14
+                    Just offsetRev -> go (idx + 14 - offsetRev) (V.unsafeDrop (13 - offsetRev) xs)
 
 recursionVectorsAndIndexFunc :: Input -> Int
 recursionVectorsAndIndexFunc = vectorsRecursionHOF findDuplicateOffset''Vector
@@ -248,3 +265,31 @@ main = do
           , bench "recursionVectorsUnsafeAndIndexFunc" $ nf recursionVectorsUnsafeAndIndexFunc input
           ]
     ]
+
+  hspec $ do
+    matchesBasicSolution "windowAndSet" windowAndSet
+    matchesBasicSolution "windowAndList" windowAndList
+    matchesBasicSolution "windowAndSetInsert" windowAndSetInsert
+    matchesBasicSolution "windowAndListCons" windowAndListCons
+    matchesBasicSolution "windowAndBits" windowAndBits
+    matchesBasicSolution "recursionAndBits" recursionAndBits
+    matchesBasicSolution "recursionAndSet" recursionAndSet
+    matchesBasicSolution "recursionAndList" recursionAndList
+    matchesBasicSolution "recursionAndIndexFunc" recursionAndIndexFunc
+    matchesBasicSolution "recursionVectorsAndIndexFunc" recursionVectorsAndIndexFunc
+    matchesBasicSolution "recursionVectorsUnsafeAndIndexFunc" recursionVectorsUnsafeAndIndexFunc
+
+newtype LetterString = LetterString {getLetterString :: String}
+  deriving (Show)
+
+instance Arbitrary LetterString where
+  arbitrary = do
+    lsLength <- getNonNegative <$> arbitrary
+    LetterString <$> replicateM lsLength (elements ['a' .. 'z'])
+
+  shrink = map LetterString . filter (all (`elem` ['a' .. 'z'])) . shrink . getLetterString
+
+matchesBasicSolution :: String -> (Input -> Int) -> Spec
+matchesBasicSolution name testSoluton =
+  prop (name <> " should produce the same result as windowAndSet") $ \(LetterString cs) ->
+    testSoluton cs `shouldBe` windowAndSet cs
