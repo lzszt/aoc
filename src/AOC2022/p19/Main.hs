@@ -163,11 +163,14 @@ maxClayCost bp = snd bp.obsidianRobotCost
 maxObsidianCost :: Blueprint -> Int
 maxObsidianCost bp = snd bp.geodeRobotCost
 
+addTrue :: (a, b, c) -> (a, b, c, Bool)
+addTrue (x, y, z) = (x, y, z, True)
+
 maximumNumberOfGeodes :: Blueprint -> Int
-maximumNumberOfGeodes bp = fst' $ go M.empty 0 initialState
+maximumNumberOfGeodes bp = fst' $ go M.empty 0 True True True initialState
   where
-    go :: M.Map Pack (Int, Int) -> Int -> State -> (Int, M.Map Pack (Int, Int), Int)
-    go cache currentMax state
+    go :: M.Map Pack (Int, Int) -> Int -> Bool -> Bool -> Bool -> State -> (Int, M.Map Pack (Int, Int), Int)
+    go cache currentMax canOre canClay canObsidian state
       | canBeat state currentMax = (0, cache, currentMax)
       | otherwise =
           case M.lookup state.pack cache of
@@ -179,26 +182,36 @@ maximumNumberOfGeodes bp = fst' $ go M.empty 0 initialState
                   let
                     (result1, cache1, max1) =
                       if canBuildGeodeRobot bp state
-                        then go cache currentMax (buildGeodeRobot bp $ tick state)
+                        then go cache currentMax True True True (buildGeodeRobot bp $ tick state)
                         else (0, cache, currentMax)
                     newMax1 = max currentMax max1
                    in
-                    let (result2, cache2, max2) =
-                          if canBuildObsidianRobot bp state && state.pack.obsidianRobots < maxObsidianCost bp
-                            then go cache1 newMax1 (buildObsidianRobot bp $ tick state)
-                            else (0, cache1, newMax1)
+                    let (result2, cache2, max2, newCanObsidian) =
+                          if canObsidian && canBuildObsidianRobot bp state && state.pack.obsidianRobots < maxObsidianCost bp
+                            then addTrue $ go cache1 newMax1 True True True (buildObsidianRobot bp $ tick state)
+                            else
+                              if canBuildObsidianRobot bp state
+                                then (0, cache1, newMax1, False)
+                                else (0, cache1, newMax1, True)
                         newMax2 = max newMax1 max2
-                     in let (result3, cache3, max3) =
-                              if canBuildClayRobot bp state && state.pack.clayRobots < maxClayCost bp
-                                then go cache2 newMax2 (buildClayRobot bp $ tick state)
-                                else (0, cache2, newMax2)
+                     in let (result3, cache3, max3, newCanClay) =
+                              if canClay && canBuildClayRobot bp state && state.pack.clayRobots < maxClayCost bp
+                                then addTrue $ go cache2 newMax2 True True True (buildClayRobot bp $ tick state)
+                                else
+                                  if canBuildClayRobot bp state
+                                    then (0, cache2, newMax2, False)
+                                    else (0, cache2, newMax2, True)
                             newMax3 = max newMax2 max3
-                         in let (result4, cache4, max4) =
-                                  if canBuildOreRobot bp state && state.pack.oreRobots < maxOreCost bp
-                                    then go cache3 newMax3 (buildOreRobot bp $ tick state)
-                                    else (0, cache3, newMax3)
+                         in let (result4, cache4, max4, newCanOre) =
+                                  if canOre && canBuildOreRobot bp state && state.pack.oreRobots < maxOreCost bp
+                                    then addTrue $ go cache3 newMax3 True True True (buildOreRobot bp $ tick state)
+                                    else
+                                      if canBuildOreRobot bp state
+                                        then (0, cache3, newMax3, False)
+                                        else (0, cache3, newMax3, True)
+
                                 newMax4 = max newMax3 max4
-                             in let (result5, cache5, max5) = go cache4 newMax4 (tick state)
+                             in let (result5, cache5, max5) = go cache4 newMax4 newCanOre newCanClay newCanObsidian (tick state)
                                     result6 = maximum [result1, result2, result3, result4, result5]
                                     cache6 = M.insert state.pack (state.minute, result6) cache5
 
