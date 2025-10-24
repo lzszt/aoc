@@ -33,6 +33,17 @@ executable 22d06
     , QuickCheck
     , vector
 
+executable 22d19
+  import:           warnings
+  ghc-options:      -O2
+  main-is:          Main.hs
+  default-language: GHC2024
+  hs-source-dirs:   src/AOC2022/p19
+  build-depends:
+    , base
+    , split
+    , containers
+
 executable 24d01
   import:           warnings
   main-is:          Main.hs
