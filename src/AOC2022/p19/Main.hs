@@ -5,15 +5,16 @@ module Main where
 import Data.Char (isNumber)
 import Data.List.Split
 import Data.Map.Strict qualified as M
+import Data.Word
 import System.Environment
 
 data Blueprint
   = Blueprint
-  { blueprintId :: Int
-  , oreRobotCost :: Int
-  , clayRobotCost :: Int
-  , obsidianRobotCost :: (Int, Int)
-  , geodeRobotCost :: (Int, Int)
+  { blueprintId :: Word8
+  , oreRobotCost :: Word8
+  , clayRobotCost :: Word8
+  , obsidianRobotCost :: (Word8, Word8)
+  , geodeRobotCost :: (Word8, Word8)
   }
 
 type Input = [Blueprint]
@@ -34,30 +35,30 @@ parseInput =
           }
       x -> error $ "Failed to parse blueprint " <> show x
 
-timeBudget :: Int
+timeBudget :: Word8
 timeBudget = 24
 
 blueprintQuality :: Blueprint -> Int
 blueprintQuality bp =
   let nGeodes = maximumNumberOfGeodes bp
    in -- trace ("BP: " <> show bp.blueprintId <> ": " <> show nGeodes) $
-      bp.blueprintId * nGeodes
+      fromIntegral bp.blueprintId * fromIntegral nGeodes
 
 canBuildGeodeRobot :: Blueprint -> State -> Bool
 canBuildGeodeRobot bp state =
   case bp.geodeRobotCost of
-    (ore, obsidian) -> state.pack.ore >= ore && state.pack.obsidian >= obsidian
+    (ore, obsidian) -> state.pack.ore >= fromIntegral ore && state.pack.obsidian >= fromIntegral obsidian
 
 canBuildObsidianRobot :: Blueprint -> State -> Bool
 canBuildObsidianRobot bp state =
   case bp.obsidianRobotCost of
-    (ore, clay) -> state.pack.ore >= ore && state.pack.clay >= clay
+    (ore, clay) -> state.pack.ore >= fromIntegral ore && state.pack.clay >= fromIntegral clay
 
 canBuildClayRobot :: Blueprint -> State -> Bool
-canBuildClayRobot bp state = state.pack.ore >= bp.clayRobotCost
+canBuildClayRobot bp state = state.pack.ore >= fromIntegral bp.clayRobotCost
 
 canBuildOreRobot :: Blueprint -> State -> Bool
-canBuildOreRobot bp state = state.pack.ore >= bp.oreRobotCost
+canBuildOreRobot bp state = state.pack.ore >= fromIntegral bp.oreRobotCost
 
 buildGeodeRobot :: Blueprint -> State -> State
 buildGeodeRobot bp state =
@@ -65,8 +66,8 @@ buildGeodeRobot bp state =
     { pack =
         state.pack
           { geodeRobots = state.pack.geodeRobots + 1
-          , ore = state.pack.ore - fst bp.geodeRobotCost
-          , obsidian = state.pack.obsidian - snd bp.geodeRobotCost
+          , ore = state.pack.ore - fromIntegral (fst bp.geodeRobotCost)
+          , obsidian = state.pack.obsidian - fromIntegral (snd bp.geodeRobotCost)
           }
     }
 
@@ -76,8 +77,8 @@ buildObsidianRobot bp state =
     { pack =
         state.pack
           { obsidianRobots = state.pack.obsidianRobots + 1
-          , ore = state.pack.ore - fst bp.obsidianRobotCost
-          , clay = state.pack.clay - snd bp.obsidianRobotCost
+          , ore = state.pack.ore - fromIntegral (fst bp.obsidianRobotCost)
+          , clay = state.pack.clay - fromIntegral (snd bp.obsidianRobotCost)
           }
     }
 
@@ -87,7 +88,7 @@ buildClayRobot bp state =
     { pack =
         state.pack
           { clayRobots = state.pack.clayRobots + 1
-          , ore = state.pack.ore - bp.clayRobotCost
+          , ore = state.pack.ore - fromIntegral bp.clayRobotCost
           }
     }
 
@@ -97,13 +98,13 @@ buildOreRobot bp state =
     { pack =
         state.pack
           { oreRobots = state.pack.oreRobots + 1
-          , ore = state.pack.ore - bp.oreRobotCost
+          , ore = state.pack.ore - fromIntegral bp.oreRobotCost
           }
     }
 
 data State
   = State
-  { minute :: Int
+  { minute :: Word8
   , pack :: Pack
   }
   deriving (Show, Eq, Ord)
@@ -118,23 +119,23 @@ tick state =
           , clayRobots = state.pack.clayRobots
           , obsidianRobots = state.pack.obsidianRobots
           , geodeRobots = state.pack.geodeRobots
-          , ore = state.pack.ore + state.pack.oreRobots
-          , clay = state.pack.clay + state.pack.clayRobots
-          , obsidian = state.pack.obsidian + state.pack.obsidianRobots
-          , geode = state.pack.geode + state.pack.geodeRobots
+          , ore = state.pack.ore + fromIntegral state.pack.oreRobots
+          , clay = state.pack.clay + fromIntegral state.pack.clayRobots
+          , obsidian = state.pack.obsidian + fromIntegral state.pack.obsidianRobots
+          , geode = state.pack.geode + fromIntegral state.pack.geodeRobots
           }
     }
 
 data Pack
   = Pack
-  { oreRobots :: Int
-  , clayRobots :: Int
-  , obsidianRobots :: Int
-  , geodeRobots :: Int
-  , ore :: Int
-  , clay :: Int
-  , obsidian :: Int
-  , geode :: Int
+  { oreRobots :: Word8
+  , clayRobots :: Word8
+  , obsidianRobots :: Word8
+  , geodeRobots :: Word8
+  , ore :: Word8
+  , clay :: Word8
+  , obsidian :: Word8
+  , geode :: Word8
   }
   deriving (Show, Eq, Ord)
 
@@ -144,32 +145,32 @@ initialState = State 0 (Pack 1 0 0 0 0 0 0 0)
 fst' :: (a, b, c) -> a
 fst' (x, _, _) = x
 
-canBeat :: State -> Int -> Bool
+canBeat :: State -> Word8 -> Bool
 canBeat state currentMax =
   let
     remaining = timeBudget - state.minute
     maxFutureGeodes =
       remaining * state.pack.geodeRobots
-        + (remaining * (remaining - 1) `div` 2)
+        + remaining `div` 2 * (remaining - 1)
    in
     state.pack.geode + maxFutureGeodes <= currentMax
 
-maxOreCost :: Blueprint -> Int
+maxOreCost :: Blueprint -> Word8
 maxOreCost bp = maximum [bp.oreRobotCost, bp.clayRobotCost, fst bp.obsidianRobotCost, fst bp.geodeRobotCost]
 
-maxClayCost :: Blueprint -> Int
+maxClayCost :: Blueprint -> Word8
 maxClayCost bp = snd bp.obsidianRobotCost
 
-maxObsidianCost :: Blueprint -> Int
+maxObsidianCost :: Blueprint -> Word8
 maxObsidianCost bp = snd bp.geodeRobotCost
 
 addTrue :: (a, b, c) -> (a, b, c, Bool)
 addTrue (x, y, z) = (x, y, z, True)
 
-maximumNumberOfGeodes :: Blueprint -> Int
+maximumNumberOfGeodes :: Blueprint -> Word8
 maximumNumberOfGeodes bp = fst' $ go M.empty 0 True True True initialState
   where
-    go :: M.Map Pack (Int, Int) -> Int -> Bool -> Bool -> Bool -> State -> (Int, M.Map Pack (Int, Int), Int)
+    go :: M.Map Pack (Word8, Word8) -> Word8 -> Bool -> Bool -> Bool -> State -> (Word8, M.Map Pack (Word8, Word8), Word8)
     go cache currentMax canOre canClay canObsidian state
       | canBeat state currentMax = (0, cache, currentMax)
       | otherwise =
