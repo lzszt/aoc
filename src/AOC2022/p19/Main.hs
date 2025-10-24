@@ -154,6 +154,15 @@ canBeat state currentMax =
    in
     state.pack.geode + maxFutureGeodes <= currentMax
 
+maxOreCost :: Blueprint -> Int
+maxOreCost bp = maximum [bp.oreRobotCost, bp.clayRobotCost, fst bp.obsidianRobotCost, fst bp.geodeRobotCost]
+
+maxClayCost :: Blueprint -> Int
+maxClayCost bp = snd bp.obsidianRobotCost
+
+maxObsidianCost :: Blueprint -> Int
+maxObsidianCost bp = snd bp.geodeRobotCost
+
 maximumNumberOfGeodes :: Blueprint -> Int
 maximumNumberOfGeodes bp = fst' $ go M.empty 0 initialState
   where
@@ -175,17 +184,17 @@ maximumNumberOfGeodes bp = fst' $ go M.empty 0 initialState
                     newMax1 = max currentMax max1
                    in
                     let (result2, cache2, max2) =
-                          if canBuildObsidianRobot bp state
+                          if canBuildObsidianRobot bp state && state.pack.obsidianRobots < maxObsidianCost bp
                             then go cache1 newMax1 (buildObsidianRobot bp $ tick state)
                             else (0, cache1, newMax1)
                         newMax2 = max newMax1 max2
                      in let (result3, cache3, max3) =
-                              if canBuildClayRobot bp state
+                              if canBuildClayRobot bp state && state.pack.clayRobots < maxClayCost bp
                                 then go cache2 newMax2 (buildClayRobot bp $ tick state)
                                 else (0, cache2, newMax2)
                             newMax3 = max newMax2 max3
                          in let (result4, cache4, max4) =
-                                  if canBuildOreRobot bp state
+                                  if canBuildOreRobot bp state && state.pack.oreRobots < maxOreCost bp
                                     then go cache3 newMax3 (buildOreRobot bp $ tick state)
                                     else (0, cache3, newMax3)
                                 newMax4 = max newMax3 max4
