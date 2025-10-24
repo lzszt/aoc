@@ -5,7 +5,6 @@ module Main where
 import Data.Char (isNumber)
 import Data.List.Split
 import Data.Map.Strict qualified as M
-import Debug.Trace
 import System.Environment
 
 data Blueprint
@@ -40,7 +39,9 @@ timeBudget = 24
 
 blueprintQuality :: Blueprint -> Int
 blueprintQuality bp =
-  bp.blueprintId * maximumNumberOfGeodes bp
+  let nGeodes = maximumNumberOfGeodes bp
+   in -- trace ("BP: " <> show bp.blueprintId <> ": " <> show nGeodes) $
+      bp.blueprintId * nGeodes
 
 canBuildGeodeRobot :: Blueprint -> State -> Bool
 canBuildGeodeRobot bp state =
@@ -138,7 +139,7 @@ data Pack
   deriving (Show, Eq, Ord)
 
 initialState :: State
-initialState = State 1 (Pack 1 0 0 0 0 0 0 0)
+initialState = State 0 (Pack 1 0 0 0 0 0 0 0)
 
 fst' :: (a, b, c) -> a
 fst' (x, _, _) = x
