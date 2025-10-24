@@ -1,11 +1,14 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedRecordDot #-}
 
 module Main where
 
 import Data.Char (isNumber)
+import Data.HashMap.Strict qualified as HM
+import Data.Hashable
 import Data.List.Split
-import Data.Map.Strict qualified as M
 import Data.Word
+import GHC.Generics
 import System.Environment
 
 data Blueprint
@@ -137,7 +140,9 @@ data Pack
   , obsidian :: Word8
   , geode :: Word8
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Hashable Pack
 
 initialState :: State
 initialState = State 0 (Pack 1 0 0 0 0 0 0 0)
@@ -168,17 +173,17 @@ addTrue :: (a, b, c) -> (a, b, c, Bool)
 addTrue (x, y, z) = (x, y, z, True)
 
 maximumNumberOfGeodes :: Blueprint -> Word8
-maximumNumberOfGeodes bp = fst' $ go M.empty 0 True True True initialState
+maximumNumberOfGeodes bp = fst' $ go HM.empty 0 True True True initialState
   where
-    go :: M.Map Pack (Word8, Word8) -> Word8 -> Bool -> Bool -> Bool -> State -> (Word8, M.Map Pack (Word8, Word8), Word8)
+    go :: HM.HashMap Pack (Word8, Word8) -> Word8 -> Bool -> Bool -> Bool -> State -> (Word8, HM.HashMap Pack (Word8, Word8), Word8)
     go cache currentMax canOre canClay canObsidian state
       | canBeat state currentMax = (0, cache, currentMax)
       | otherwise =
-          case M.lookup state.pack cache of
+          case HM.lookup state.pack cache of
             Just (minute, nGeodes) | state.minute >= minute -> (nGeodes, cache, currentMax)
             _ ->
               if state.minute == timeBudget
-                then (state.pack.geode, M.insert state.pack (state.minute, state.pack.geode) cache, max state.pack.geode currentMax)
+                then (state.pack.geode, HM.insert state.pack (state.minute, state.pack.geode) cache, max state.pack.geode currentMax)
                 else
                   let
                     (result1, cache1, max1) =
@@ -214,7 +219,7 @@ maximumNumberOfGeodes bp = fst' $ go M.empty 0 True True True initialState
                                 newMax4 = max newMax3 max4
                              in let (result5, cache5, max5) = go cache4 newMax4 newCanOre newCanClay newCanObsidian (tick state)
                                     result6 = maximum [result1, result2, result3, result4, result5]
-                                    cache6 = M.insert state.pack (state.minute, result6) cache5
+                                    cache6 = HM.insert state.pack (state.minute, result6) cache5
 
                                     newMax5 = max newMax4 max5
                                  in (result6, cache6, newMax5)

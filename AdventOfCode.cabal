@@ -42,7 +42,8 @@ executable 22d19
   build-depends:
     , base
     , split
-    , containers
+    , unordered-containers
+    , hashable
 
 executable 24d01
   import:           warnings
