@@ -51,18 +51,18 @@ blueprintQuality bp =
 canBuildGeodeRobot :: Blueprint -> State -> Bool
 canBuildGeodeRobot bp state =
   case bp.geodeRobotCost of
-    (ore, obsidian) -> state.pack.ore >= fromIntegral ore && state.pack.obsidian >= fromIntegral obsidian
+    (ore, obsidian) -> state.pack.ore >= ore && state.pack.obsidian >= obsidian
 
 canBuildObsidianRobot :: Blueprint -> State -> Bool
 canBuildObsidianRobot bp state =
   case bp.obsidianRobotCost of
-    (ore, clay) -> state.pack.ore >= fromIntegral ore && state.pack.clay >= fromIntegral clay
+    (ore, clay) -> state.pack.ore >= ore && state.pack.clay >= clay
 
 canBuildClayRobot :: Blueprint -> State -> Bool
-canBuildClayRobot bp state = state.pack.ore >= fromIntegral bp.clayRobotCost
+canBuildClayRobot bp state = state.pack.ore >= bp.clayRobotCost
 
 canBuildOreRobot :: Blueprint -> State -> Bool
-canBuildOreRobot bp state = state.pack.ore >= fromIntegral bp.oreRobotCost
+canBuildOreRobot bp state = state.pack.ore >= bp.oreRobotCost
 
 buildGeodeRobot :: Blueprint -> State -> State
 buildGeodeRobot bp state =
@@ -70,8 +70,8 @@ buildGeodeRobot bp state =
     { pack =
         state.pack
           { geodeRobots = state.pack.geodeRobots + 1
-          , ore = state.pack.ore - fromIntegral (fst bp.geodeRobotCost)
-          , obsidian = state.pack.obsidian - fromIntegral (snd bp.geodeRobotCost)
+          , ore = state.pack.ore - (fst bp.geodeRobotCost)
+          , obsidian = state.pack.obsidian - (snd bp.geodeRobotCost)
           }
     }
 
@@ -81,8 +81,8 @@ buildObsidianRobot bp state =
     { pack =
         state.pack
           { obsidianRobots = state.pack.obsidianRobots + 1
-          , ore = state.pack.ore - fromIntegral (fst bp.obsidianRobotCost)
-          , clay = state.pack.clay - fromIntegral (snd bp.obsidianRobotCost)
+          , ore = state.pack.ore - (fst bp.obsidianRobotCost)
+          , clay = state.pack.clay - (snd bp.obsidianRobotCost)
           }
     }
 
@@ -92,7 +92,7 @@ buildClayRobot bp state =
     { pack =
         state.pack
           { clayRobots = state.pack.clayRobots + 1
-          , ore = state.pack.ore - fromIntegral bp.clayRobotCost
+          , ore = state.pack.ore - bp.clayRobotCost
           }
     }
 
@@ -102,7 +102,7 @@ buildOreRobot bp state =
     { pack =
         state.pack
           { oreRobots = state.pack.oreRobots + 1
-          , ore = state.pack.ore - fromIntegral bp.oreRobotCost
+          , ore = state.pack.ore - bp.oreRobotCost
           }
     }
 
@@ -118,15 +118,11 @@ tick state =
   State
     { minute = state.minute + 1
     , pack =
-        Pack
-          { oreRobots = state.pack.oreRobots
-          , clayRobots = state.pack.clayRobots
-          , obsidianRobots = state.pack.obsidianRobots
-          , geodeRobots = state.pack.geodeRobots
-          , ore = state.pack.ore + fromIntegral state.pack.oreRobots
-          , clay = state.pack.clay + fromIntegral state.pack.clayRobots
-          , obsidian = state.pack.obsidian + fromIntegral state.pack.obsidianRobots
-          , geode = state.pack.geode + fromIntegral state.pack.geodeRobots
+        state.pack
+          { ore = state.pack.ore + state.pack.oreRobots
+          , clay = state.pack.clay + state.pack.clayRobots
+          , obsidian = state.pack.obsidian + state.pack.obsidianRobots
+          , geode = state.pack.geode + state.pack.geodeRobots
           }
     }
 
