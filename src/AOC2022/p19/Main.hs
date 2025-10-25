@@ -3,6 +3,7 @@
 
 module Main where
 
+import Control.Arrow (Arrow (first, second))
 import Data.Char (isNumber)
 import Data.HashMap.Strict qualified as HM
 import Data.Hashable
@@ -147,18 +148,16 @@ instance Hashable Pack
 initialState :: State
 initialState = State 0 (Pack 1 0 0 0 0 0 0 0)
 
-fst' :: (a, b, c) -> a
-fst' (x, _, _) = x
-
-canBeat :: State -> Word8 -> Bool
-canBeat state currentMax =
+canBeat :: State -> StateM (s, Word8) Bool
+canBeat state = do
+  currentMax <- gets snd
   let
     remaining = timeBudget - state.minute
     maxFutureGeodes =
       remaining * state.pack.geodeRobots
         + remaining `div` 2 * (remaining - 1)
-   in
-    state.pack.geode + maxFutureGeodes <= currentMax
+
+  pure $ state.pack.geode + maxFutureGeodes <= currentMax
 
 maxOreCost :: Blueprint -> Word8
 maxOreCost bp = maximum [bp.oreRobotCost, bp.clayRobotCost, fst bp.obsidianRobotCost, fst bp.geodeRobotCost]
@@ -169,60 +168,90 @@ maxClayCost bp = snd bp.obsidianRobotCost
 maxObsidianCost :: Blueprint -> Word8
 maxObsidianCost bp = snd bp.geodeRobotCost
 
-addTrue :: (a, b, c) -> (a, b, c, Bool)
-addTrue (x, y, z) = (x, y, z, True)
+newtype StateM s a = StateM {runState :: s -> (s, a)}
+
+get :: StateM a a
+get = StateM $ \s -> (s, s)
+
+gets :: (a -> b) -> StateM a b
+gets f = fmap f get
+
+put :: s -> StateM s ()
+put s = StateM $ const (s, ())
+
+modify :: (t -> t) -> StateM t ()
+modify f = StateM $ \s -> (f s, ())
+
+execState :: s -> StateM s a -> a
+execState s act = snd $ runState act s
+
+instance Functor (StateM s) where
+  fmap f = StateM . fmap (second f) . runState
+
+instance Applicative (StateM s) where
+  pure x = StateM $ \s -> (s, x)
+
+  StateM f <*> StateM x = StateM $ \s ->
+    let (s', f') = f s
+     in second f' $ x s'
+
+instance Monad (StateM s) where
+  StateM x >>= f = StateM $ \s ->
+    let (s', a) = x s
+     in runState (f a) s'
 
 maximumNumberOfGeodes :: Blueprint -> Word8
-maximumNumberOfGeodes bp = fst' $ go HM.empty 0 True True True initialState
+maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialState
   where
-    go :: HM.HashMap Pack (Word8, Word8) -> Word8 -> Bool -> Bool -> Bool -> State -> (Word8, HM.HashMap Pack (Word8, Word8), Word8)
-    go cache currentMax canOre canClay canObsidian state
-      | canBeat state currentMax = (0, cache, currentMax)
-      | otherwise =
-          case HM.lookup state.pack cache of
-            Just (minute, nGeodes) | state.minute >= minute -> (nGeodes, cache, currentMax)
-            _ ->
-              if state.minute == timeBudget
-                then (state.pack.geode, HM.insert state.pack (state.minute, state.pack.geode) cache, max state.pack.geode currentMax)
-                else
-                  let
-                    (result1, cache1, max1) =
-                      if canBuildGeodeRobot bp state
-                        then go cache currentMax True True True (buildGeodeRobot bp $ tick state)
-                        else (0, cache, currentMax)
-                    newMax1 = max currentMax max1
-                   in
-                    let (result2, cache2, max2, newCanObsidian) =
-                          if canObsidian && canBuildObsidianRobot bp state && state.pack.obsidianRobots < maxObsidianCost bp
-                            then addTrue $ go cache1 newMax1 True True True (buildObsidianRobot bp $ tick state)
-                            else
-                              if canBuildObsidianRobot bp state
-                                then (0, cache1, newMax1, False)
-                                else (0, cache1, newMax1, True)
-                        newMax2 = max newMax1 max2
-                     in let (result3, cache3, max3, newCanClay) =
-                              if canClay && canBuildClayRobot bp state && state.pack.clayRobots < maxClayCost bp
-                                then addTrue $ go cache2 newMax2 True True True (buildClayRobot bp $ tick state)
-                                else
-                                  if canBuildClayRobot bp state
-                                    then (0, cache2, newMax2, False)
-                                    else (0, cache2, newMax2, True)
-                            newMax3 = max newMax2 max3
-                         in let (result4, cache4, max4, newCanOre) =
-                                  if canOre && canBuildOreRobot bp state && state.pack.oreRobots < maxOreCost bp
-                                    then addTrue $ go cache3 newMax3 True True True (buildOreRobot bp $ tick state)
-                                    else
-                                      if canBuildOreRobot bp state
-                                        then (0, cache3, newMax3, False)
-                                        else (0, cache3, newMax3, True)
+    go :: Bool -> Bool -> Bool -> State -> StateM (HM.HashMap Pack (Word8, Word8), Word8) Word8
+    go canOre canClay canObsidian state = do
+      beatable <- canBeat state
+      if beatable
+        then pure 0
+        else do
+          cachedResult <- gets (HM.lookup state.pack . fst)
+          case cachedResult of
+            Just (minute, nGeodes) | state.minute >= minute -> pure nGeodes
+            _
+              | state.minute == timeBudget -> do
+                  modify $ \(cache, currentMax) -> (HM.insert state.pack (state.minute, state.pack.geode) cache, max state.pack.geode currentMax)
+                  pure state.pack.geode
+              | otherwise -> do
+                  result1 <-
+                    if canBuildGeodeRobot bp state
+                      then go True True True (buildGeodeRobot bp $ tick state)
+                      else pure 0
 
-                                newMax4 = max newMax3 max4
-                             in let (result5, cache5, max5) = go cache4 newMax4 newCanOre newCanClay newCanObsidian (tick state)
-                                    result6 = maximum [result1, result2, result3, result4, result5]
-                                    cache6 = HM.insert state.pack (state.minute, result6) cache5
+                  (result2, newCanObsidian) <-
+                    if canObsidian && state.pack.obsidianRobots < maxObsidianCost bp && canBuildObsidianRobot bp state
+                      then (,True) <$> go True True True (buildObsidianRobot bp $ tick state)
+                      else
+                        pure $
+                          if canBuildObsidianRobot bp state
+                            then (0, False)
+                            else (0, True)
+                  (result3, newCanClay) <-
+                    if canClay && state.pack.clayRobots < maxClayCost bp && canBuildClayRobot bp state
+                      then (,True) <$> go True True True (buildClayRobot bp $ tick state)
+                      else
+                        pure $
+                          if canBuildClayRobot bp state
+                            then (0, False)
+                            else (0, True)
+                  (result4, newCanOre) <-
+                    if canOre && state.pack.oreRobots < maxOreCost bp && canBuildOreRobot bp state
+                      then (,True) <$> go True True True (buildOreRobot bp $ tick state)
+                      else
+                        pure $
+                          if canBuildOreRobot bp state
+                            then (0, False)
+                            else (0, True)
 
-                                    newMax5 = max newMax4 max5
-                                 in (result6, cache6, newMax5)
+                  result5 <- go newCanOre newCanClay newCanObsidian (tick state)
+                  let result6 = maximum [result1, result2, result3, result4, result5]
+                  modify (first (HM.insert state.pack (state.minute, result6)))
+
+                  pure result6
 
 part1 :: Input -> Int
 part1 = sum . map blueprintQuality
