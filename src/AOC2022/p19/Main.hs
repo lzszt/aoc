@@ -13,11 +13,11 @@ import System.Environment
 
 data Blueprint
   = Blueprint
-  { blueprintId :: Word8
-  , oreRobotCost :: Word8
-  , clayRobotCost :: Word8
-  , obsidianRobotCost :: (Word8, Word8)
-  , geodeRobotCost :: (Word8, Word8)
+  { blueprintId :: !Word8
+  , oreRobotCost :: !Word8
+  , clayRobotCost :: !Word8
+  , obsidianRobotCost :: !(Word8, Word8)
+  , geodeRobotCost :: !(Word8, Word8)
   }
 
 type Input = [Blueprint]
@@ -107,8 +107,8 @@ buildOreRobot bp state =
 
 data State
   = State
-  { minute :: Word8
-  , pack :: Pack
+  { minute :: !Word8
+  , pack :: !Pack
   }
   deriving (Show, Eq, Ord)
 
@@ -131,14 +131,14 @@ tick state =
 
 data Pack
   = Pack
-  { oreRobots :: Word8
-  , clayRobots :: Word8
-  , obsidianRobots :: Word8
-  , geodeRobots :: Word8
-  , ore :: Word8
-  , clay :: Word8
-  , obsidian :: Word8
-  , geode :: Word8
+  { oreRobots :: !Word8
+  , clayRobots :: !Word8
+  , obsidianRobots :: !Word8
+  , geodeRobots :: !Word8
+  , ore :: !Word8
+  , clay :: !Word8
+  , obsidian :: !Word8
+  , geode :: !Word8
   }
   deriving (Show, Eq, Ord, Generic)
 
