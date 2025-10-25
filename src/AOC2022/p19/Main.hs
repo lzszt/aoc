@@ -196,6 +196,9 @@ instance Monad (StateM s) where
     let (s', a) = x s
      in runState (f a) s'
 
+updateCurrentMax :: Word8 -> StateM (d, Word8) Word8
+updateCurrentMax newVal = modify (second (max newVal)) >> pure newVal
+
 maximumNumberOfGeodes :: Blueprint -> Word8
 maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialState
   where
@@ -214,9 +217,10 @@ maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialSt
                   pure state.pack.geode
               | otherwise -> do
                   result1 <-
-                    if canBuildGeodeRobot bp state
-                      then go True True True (buildGeodeRobot bp $ tick state)
-                      else pure 0
+                    updateCurrentMax
+                      =<< if canBuildGeodeRobot bp state
+                        then go True True True (buildGeodeRobot bp $ tick state)
+                        else pure 0
 
                   (result2, newCanObsidian) <-
                     if canObsidian && state.pack.obsidianRobots < maxObsidianCost bp && canBuildObsidianRobot bp state
@@ -226,6 +230,9 @@ maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialSt
                           if canBuildObsidianRobot bp state
                             then (0, False)
                             else (0, True)
+
+                  modify (second (max result2))
+
                   (result3, newCanClay) <-
                     if canClay && state.pack.clayRobots < maxClayCost bp && canBuildClayRobot bp state
                       then (,True) <$> go True True True (buildClayRobot bp $ tick state)
@@ -234,6 +241,9 @@ maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialSt
                           if canBuildClayRobot bp state
                             then (0, False)
                             else (0, True)
+
+                  modify (second (max result3))
+
                   (result4, newCanOre) <-
                     if canOre && state.pack.oreRobots < maxOreCost bp && canBuildOreRobot bp state
                       then (,True) <$> go True True True (buildOreRobot bp $ tick state)
@@ -243,7 +253,12 @@ maximumNumberOfGeodes bp = execState (HM.empty, 0) $ go True True True initialSt
                             then (0, False)
                             else (0, True)
 
-                  result5 <- go newCanOre newCanClay newCanObsidian (tick state)
+                  modify (second (max result4))
+
+                  result5 <-
+                    updateCurrentMax
+                      =<< go newCanOre newCanClay newCanObsidian (tick state)
+
                   let result6 = maximum [result1, result2, result3, result4, result5]
                   modify (first (HM.insert state.pack (state.minute, result6)))
 
