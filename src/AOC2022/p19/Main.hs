@@ -185,14 +185,14 @@ instance Functor (StateM s) where
   fmap f = StateM . fmap (second f) . runState
 
 instance Applicative (StateM s) where
-  pure x = StateM $ \s -> (s, x)
+  pure x = StateM $ \(!s) -> (s, x)
 
-  StateM f <*> StateM x = StateM $ \s ->
+  StateM f <*> StateM x = StateM $ \(!s) ->
     let (s', f') = f s
      in second f' $ x s'
 
 instance Monad (StateM s) where
-  StateM x >>= f = StateM $ \s ->
+  StateM x >>= f = StateM $ \(!s) ->
     let (s', a) = x s
      in runState (f a) s'
 
