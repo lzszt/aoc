@@ -36,7 +36,18 @@ part1 =
       RotateRight dist -> (pos + dist) `mod` 100
 
 part2 :: Input -> Int
-part2 = const 0
+part2 =
+  snd
+    . foldl'
+      ( \(currentPosition, zeroCount) rot ->
+          let (newPosition, newZeros) = applyRotation currentPosition rot
+           in (newPosition, zeroCount + newZeros)
+      )
+      (initialDialPosition, 0)
+  where
+    applyRotation pos = \case
+      RotateLeft dist -> ((pos - dist) `mod` 100, dist `div` 100 + if (pos - dist `mod` 100) <= 0 && pos > 0 then 1 else 0)
+      RotateRight dist -> ((pos + dist) `mod` 100, dist `div` 100 + if (pos + dist `mod` 100 > 99) then 1 else 0)
 
 main :: IO ()
 main = do
