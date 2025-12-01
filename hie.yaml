@@ -10,3 +10,5 @@ cradle:
       component: "AdventOfCode:exe:24d02"
     - path: "src/AOC2024/p03"
       component: "AdventOfCode:exe:24d03"
+    - path: "src/AOC2025/p01"
+      component: "AdventOfCode:exe:25d01"

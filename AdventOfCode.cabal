@@ -67,3 +67,11 @@ executable 24d03
   default-language: GHC2021
   hs-source-dirs:   src/AOC2024/p03
   build-depends:    base
+
+
+executable 25d01
+  import:           warnings
+  main-is:          Main.hs
+  default-language: GHC2024
+  hs-source-dirs:   src/AOC2025/p01
+  build-depends:    base
